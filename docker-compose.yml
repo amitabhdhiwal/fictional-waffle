@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  api:
+    image: node:19-alpine3.16
+    volumes:
+      - "./api:/app"
+    depends_on:
+      - redis
+    working_dir: /app
+    command: "npm run start:dev"
+  apitest:
+    image: node:19-alpine3.16
+    env_file: "api/.env"
+    volumes:
+      - "./api:/app"
+    depends_on:
+      - redis
+    working_dir: /app
+    command: "npm run test"
+  redis:
+    image: "redis:alpine"
+    #ports:
+    #  - "6379:6379"
+    volumes:
+      - "./data/redis:/redis-data"
+    command: ["redis-server", "--requirepass", "hy&T9PGFBYJBGA"]
