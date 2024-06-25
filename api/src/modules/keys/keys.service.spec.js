@@ -9,7 +9,7 @@ describe('KeyService', () => {
   let app;
   let keys;
 
-  let customerId = '2456';
+  let customerId = '123456';
 
   beforeAll(async () => {
     keys = await Test.createTestingModule({
@@ -41,7 +41,7 @@ describe('KeyService', () => {
       expect(isValidRequest).toEqual(true);
     });
 
-    it('should return false for invalid request', async () => {
+    it('should return false for rate limited exceeded', async () => {
       const expiresAt = new Date().getTime() + 600000;
       let data = { customerId, expiresAt, rateLimit: 100, enabled: 1 }
       const keysController = keys.get(KeysController);
@@ -55,7 +55,7 @@ describe('KeyService', () => {
 
       let validRequestData = { key }
       const isValidRequest = await keyService.isValidRequest(validRequestData);
-      expect(isValidRequest).toEqual(true);
+      expect(isValidRequest).toEqual(false);
     });
 
     //return false for expired key
@@ -71,4 +71,5 @@ describe('KeyService', () => {
       expect(isValidRequest).toEqual(false);
     });
   });
+
 });
