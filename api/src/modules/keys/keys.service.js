@@ -65,7 +65,7 @@ export class KeyService {
     if (enabled !== undefined) {
       hash.push('enabled', enabled);
     }
-    if(hash.length === 0) return { customerId };
+    if (hash.length === 0) return { customerId };
     await setHashKeyAll(hashKey, hash);
     return { customerId, expiresAt, rateLimit, enabled };
   }
@@ -74,6 +74,8 @@ export class KeyService {
   async getPlan(data) {
     const { key } = data;
     let hashKey = await getKeyValue(key);
+    if (!hashKey) return false;
+
     let hash = await getHashAll(hashKey);
 
     return hash;
@@ -104,8 +106,12 @@ export class KeyService {
 
   //check if key is enabled
   async isEnabled(data) {
-    let value = await this.getKeyValue(data, 'enabled') 
+    let value = await this.getKeyValue(data, 'enabled')
     return parseInt(value) === 1;
+  }
+
+  planIsEnabled(plan) {
+    return plan.enabled !== undefined && parseInt(plan.enabled) === 1;
   }
 
   //check if key has expired
@@ -114,6 +120,10 @@ export class KeyService {
     return expiresAt < Date.now();
   }
 
+  planHasExpired(plan) {
+    return plan.expiresAt && plan.expiresAt < Date.now();
+  }
+  
   //check if key has exceeded rate limit
   async hasExceededRateLimit(data) {
     let rateLimit = await this.getKeyValue(data, 'rateLimit')
@@ -121,9 +131,9 @@ export class KeyService {
     let customerId = await getKeyValue(data.key);
     let hashKey = this.getHashKey(customerId)
     let reqCount = await getHashKeyValue(hashKey, 'req_c');
-    if(!reqCount) reqCount = 0;
+    if (!reqCount) reqCount = 0;
     reqCount = parseInt(reqCount);
-    rateLimit= parseInt(rateLimit)
+    rateLimit = parseInt(rateLimit)
     //check if request count has exceeded rate limit
     return reqCount >= rateLimit;
   }
@@ -131,8 +141,8 @@ export class KeyService {
   //increment request count
   async incrementRequestCount(data) {
     const { key } = data;
-    let {value} = data;
-    if(!value) value = 1;
+    let { value } = data;
+    if (!value) value = 1;
     let customerId = await getKeyValue(key);
     let hashKey = this.getHashKey(customerId)
     await incrementHashKeyValue(hashKey, 'req_c', value);
@@ -147,18 +157,35 @@ export class KeyService {
   }
 
   async isValidRequest(data) {
+    let res = { valid: false }
     if (!data.key) {
-      return false;
+      res.noKey = true;
+      return res;
     }
-    let isEnabled = await this.isEnabled(data);
-    if (!isEnabled) return false;
 
-    let hasExpired = await this.hasExpired(data);
-    if (hasExpired) return false;
+    let plan = await this.getPlan(data);
+    if (!plan) {
+      res.noPlan = true;
+      return res
+    };
 
-    let hasExceededRateLimit = await this.hasExceededRateLimit(data);
+    let isEnabled = this.planIsEnabled(plan)
+    if (!isEnabled) {
+      res.disabled = true;
+      return res
+    };
 
-    if (hasExceededRateLimit) return false;
+    let hasExpired = this.planHasExpired(plan);
+    if (hasExpired) {
+      res.hasExpired = true;
+      return res
+    };
+
+    let hasExceededRateLimit = await this.hasExceededRateLimit(plan);
+    if (hasExceededRateLimit) {
+      res.rateLimited = true;
+      return res
+    };
 
 
     //if current second is 0 reset request count
@@ -177,6 +204,7 @@ export class KeyService {
     await this.incrementRequestCount(data);
     await this.setLastRequestTime(data);
 
-    return true;
+    res.valid = true;
+    return res;
   }
 }
