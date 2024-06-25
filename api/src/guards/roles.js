@@ -13,8 +13,6 @@ export class RolesGuard {
   canActivate(context) {
     const requiredRoles = this.reflector.get(ROLES_KEY, context.getHandler());
     const request = context.switchToRpc().getData();
-
-    console.log({requiredRoles, request});
     if (!requiredRoles) {
       return false;
     }
