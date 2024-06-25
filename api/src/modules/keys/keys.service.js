@@ -110,20 +110,22 @@ export class KeyService {
 
   //check if key has expired
   async hasExpired(data) {
-    let expiresAt = await this.getKeyValue(data, 'expiresAt')
+    let expiresAt = await this.getKeyValue(data, 'expiresAt');
     return expiresAt < Date.now();
   }
 
   //check if key has exceeded rate limit
   async hasExceededRateLimit(data) {
-    let rateLimit = this.getKeyValue(data, 'rateLimit')
+    let rateLimit = await this.getKeyValue(data, 'rateLimit')
     //get current request count
     let customerId = await getKeyValue(data.key);
     let hashKey = this.getHashKey(customerId)
     let reqCount = await getHashKeyValue(hashKey, 'req_c');
-
+    if(!reqCount) reqCount = 0;
+    reqCount = parseInt(reqCount);
+    rateLimit= parseInt(rateLimit)
     //check if request count has exceeded rate limit
-    return reqCount > rateLimit;
+    return reqCount >= rateLimit;
   }
 
   //increment request count
@@ -155,6 +157,7 @@ export class KeyService {
     if (hasExpired) return false;
 
     let hasExceededRateLimit = await this.hasExceededRateLimit(data);
+
     if (hasExceededRateLimit) return false;
 
 
